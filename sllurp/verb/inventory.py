@@ -7,8 +7,8 @@ import pprint
 import time
 from twisted.internet import reactor, defer
 
+from sllurp.util import monotonic
 from sllurp.llrp import LLRPClientFactory
-from sllurp.llrp_proto import Modulation_DefaultTari
 
 start_time = None
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def finish(*args):
-    runtime = time.monotonic() - start_time
+    runtime = monotonic() - start_time
     logger.info('total # of tags seen: %d (%d tags/second)', numtags,
                 numtags/runtime)
     if reactor.running:
@@ -48,18 +48,6 @@ def main(args):
         logger.info('No readers specified.')
         return 0
 
-    # special case default Tari values
-    tari = args.tari
-    if args.modulation in Modulation_DefaultTari:
-        t_suggested = Modulation_DefaultTari[args.modulation]
-        if args.tari:
-            logger.warn('recommended Tari for %s is %d', args.modulation,
-                        t_suggested)
-        else:
-            tari = t_suggested
-            logger.info('selected recommended Tari of %d for %s', args.tari,
-                        args.modulation)
-
     enabled_antennas = [int(x.strip()) for x in args.antennas.split(',')]
     antmap = {
         host: {
@@ -79,28 +67,42 @@ def main(args):
         report_every_n_tags=args.every_n,
         antenna_dict=antmap,
         tx_power=args.tx_power,
-        modulation=args.modulation,
-        tari=tari,
+        tari=args.tari,
         session=args.session,
         mode_identifier=args.mode_identifier,
         tag_population=args.population,
         start_inventory=True,
         disconnect_when_done=args.time and args.time > 0,
         reconnect=args.reconnect,
+        tag_filter_mask=args.tag_filter_mask,
         tag_content_selector={
-            'EnableROSpecID': True,
+            'EnableROSpecID': False,
             'EnableSpecIndex': False,
             'EnableInventoryParameterSpecID': False,
-            'EnableAntennaID': True,
-            'EnableChannelIndex': False,
-            'EnablePeakRRSI': True,
+            'EnableAntennaID': False,
+            'EnableChannelIndex': True,
+            'EnablePeakRSSI': False,
             'EnableFirstSeenTimestamp': False,
             'EnableLastSeenTimestamp': True,
             'EnableTagSeenCount': True,
             'EnableAccessSpecID': False
         },
+        impinj_extended_configuration=args.impinj_extended_configuration,
         impinj_search_mode=args.impinj_search_mode,
+        impinj_tag_content_selector=None,
     )
+    if args.impinj_reports:
+        factory_args['impinj_tag_content_selector'] = {
+            'EnableRFPhaseAngle': True,
+            'EnablePeakRSSI': False,
+            'EnableRFDopplerFrequency': False
+        }
+    if args.impinj_fixed_freq:
+        factory_args['impinj_fixed_frequency_param'] = {
+            'FixedFrequencyMode': 2,
+            'ChannelListIndex': [1]
+        }
+
     fac = LLRPClientFactory(**factory_args)
 
     # tag_report_cb will be called every time the reader sends a TagReport
@@ -119,6 +121,6 @@ def main(args):
     reactor.addSystemEventTrigger('before', 'shutdown', shutdown, fac)
 
     # start runtime measurement to determine rates
-    start_time = time.monotonic()
+    start_time = monotonic()
 
     reactor.run()

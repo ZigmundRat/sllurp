@@ -2,9 +2,9 @@ from __future__ import print_function, unicode_literals
 import argparse
 import logging
 import pprint
-import time
 from twisted.internet import reactor, defer
 
+from sllurp.util import monotonic
 import sllurp.llrp as llrp
 
 startTime = None
@@ -18,12 +18,12 @@ args = None
 
 def startTimeMeasurement():
     global startTime
-    startTime = time.monotonic()
+    startTime = monotonic()
 
 
 def stopTimeMeasurement():
     global endTime
-    endTime = time.monotonic()
+    endTime = monotonic()
 
 
 def finish(_):
@@ -89,8 +89,6 @@ def parse_args():
     parser.add_argument('-X', '--tx-power', default=0, type=int,
                         dest='tx_power',
                         help='Transmit power (default 0=max power)')
-    parser.add_argument('-M', '--modulation', default='M8',
-                        help='modulation (default M8)')
     parser.add_argument('-T', '--tari', default=0, type=int,
                         help='Tari value (default 0=auto)')
     parser.add_argument('-s', '--session', default=2, type=int,
@@ -146,7 +144,6 @@ def main():
 
     fac = llrp.LLRPClientFactory(onFinish=onFinish,
                                  disconnect_when_done=True,
-                                 modulation=args.modulation,
                                  tari=args.tari,
                                  session=args.session,
                                  tag_population=args.population,
@@ -159,7 +156,7 @@ def main():
                                      'EnableInventoryParameterSpecID': False,
                                      'EnableAntennaID': True,
                                      'EnableChannelIndex': False,
-                                     'EnablePeakRRSI': True,
+                                     'EnablePeakRSSI': True,
                                      'EnableFirstSeenTimestamp': False,
                                      'EnableLastSeenTimestamp': True,
                                      'EnableTagSeenCount': True,

@@ -3,9 +3,9 @@ import binascii
 import logging
 import pprint
 import sys
-import time
 from twisted.internet import reactor, defer
 
+from sllurp.util import monotonic
 import sllurp.llrp as llrp
 
 startTime = None
@@ -18,7 +18,7 @@ args = None
 
 def finish(_):
     # stop runtime measurement to determine rates
-    runTime = time.monotonic() - startTime
+    runTime = monotonic() - startTime
 
     logger.info('total # of tags seen: %d (%d tags/second)', tagReport,
                 tagReport/runTime)
@@ -99,7 +99,6 @@ def main(main_args):
 
     fac = llrp.LLRPClientFactory(onFinish=onFinish,
                                  disconnect_when_done=True,
-                                 modulation=args.modulation,
                                  tari=args.tari,
                                  session=args.session,
                                  tag_population=args.population,
@@ -112,7 +111,7 @@ def main(main_args):
                                      'EnableInventoryParameterSpecID': False,
                                      'EnableAntennaID': True,
                                      'EnableChannelIndex': False,
-                                     'EnablePeakRRSI': True,
+                                     'EnablePeakRSSI': True,
                                      'EnableFirstSeenTimestamp': False,
                                      'EnableLastSeenTimestamp': True,
                                      'EnableTagSeenCount': True,
@@ -133,7 +132,7 @@ def main(main_args):
     reactor.addSystemEventTrigger('before', 'shutdown', politeShutdown, fac)
 
     # start runtime measurement to determine rates
-    startTime = time.monotonic()
+    startTime = monotonic()
 
     reactor.run()
 
